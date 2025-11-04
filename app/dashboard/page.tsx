@@ -108,137 +108,171 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* KPIs */}
+          {/* KPIs Principales */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="card">
-              <div className="flex items-center">
-                <Package className="w-8 h-8 text-mondelez-purple" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Lockers</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalLockers}</p>
+            <div className="card bg-gradient-to-r from-mondelez-purple to-purple-600 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">Total Lockers</p>
+                  <p className="text-3xl font-bold">{stats.totalLockers}</p>
+                  <p className="text-purple-200 text-xs mt-1">Sistema completo</p>
                 </div>
+                <Package className="w-12 h-12 text-purple-200" />
               </div>
             </div>
             
-            <div className="card">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">D</span>
+            <div className="card bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">Disponibles</p>
+                  <p className="text-3xl font-bold">{stats.availableLockers}</p>
+                  <p className="text-green-200 text-xs mt-1">{Math.round((stats.availableLockers / stats.totalLockers) * 100)}% del total</p>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Disponibles</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.availableLockers}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">O</span>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Ocupados</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.occupiedLockers}</p>
+                <div className="w-12 h-12 bg-green-400 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">✓</span>
                 </div>
               </div>
             </div>
 
-            <div className="card">
-              <div className="flex items-center">
-                <Users className="w-8 h-8 text-mondelez-blue" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Empleados Activos</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeEmployees}</p>
+            <div className="card bg-gradient-to-r from-red-500 to-red-600 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-100 text-sm font-medium">Ocupados</p>
+                  <p className="text-3xl font-bold">{stats.occupiedLockers}</p>
+                  <p className="text-red-200 text-xs mt-1">{Math.round((stats.occupiedLockers / stats.totalLockers) * 100)}% ocupación</p>
                 </div>
+                <div className="w-12 h-12 bg-red-400 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">●</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-gradient-to-r from-mondelez-blue to-blue-600 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Empleados Activos</p>
+                  <p className="text-3xl font-bold">{stats.activeEmployees}</p>
+                  <p className="text-blue-200 text-xs mt-1">Personal registrado</p>
+                </div>
+                <Users className="w-12 h-12 text-blue-200" />
               </div>
             </div>
           </div>
 
-          {/* Turnos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Turno 1</h3>
-              <p className="text-3xl font-bold text-mondelez-purple">{stats.shift1}</p>
-              <p className="text-sm text-gray-600">Lockers asignados</p>
-            </div>
-            
-            <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Turno 2</h3>
-              <p className="text-3xl font-bold text-mondelez-blue">{stats.shift2}</p>
-              <p className="text-sm text-gray-600">Lockers asignados</p>
-            </div>
-            
-            <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Turno 3</h3>
-              <p className="text-3xl font-bold text-mondelez-green">{stats.shift3}</p>
-              <p className="text-sm text-gray-600">Lockers asignados</p>
-            </div>
-          </div>
-
-          {/* Acciones rápidas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Acciones Principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <button
               onClick={() => router.push('/dashboard/lockers')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-mondelez-purple"
             >
-              <Package className="w-12 h-12 text-mondelez-purple mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Gestionar Lockers</h3>
-              <p className="text-gray-600">Ver, crear y administrar lockers</p>
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-mondelez-purple rounded-xl flex items-center justify-center group-hover:bg-purple-700 transition-colors">
+                  <Package className="w-8 h-8 text-white" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-mondelez-purple transition-colors">Gestionar Lockers</h3>
+                </div>
+              </div>
+              <p className="text-gray-600 group-hover:text-gray-700">Crear, editar, eliminar y generar códigos QR de lockers</p>
+              <div className="mt-4 flex items-center text-mondelez-purple font-medium">
+                <span>Ir a gestión</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
 
             <button
               onClick={() => router.push('/dashboard/employees')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-mondelez-blue"
             >
-              <Users className="w-12 h-12 text-mondelez-blue mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Gestionar Empleados</h3>
-              <p className="text-gray-600">Registrar y administrar empleados</p>
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-mondelez-blue rounded-xl flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-mondelez-blue transition-colors">Gestionar Empleados</h3>
+                </div>
+              </div>
+              <p className="text-gray-600 group-hover:text-gray-700">Registrar, editar y administrar información de empleados</p>
+              <div className="mt-4 flex items-center text-mondelez-blue font-medium">
+                <span>Ir a gestión</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/assign')}
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-mondelez-orange"
+            >
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-mondelez-orange rounded-xl flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                  <span className="text-white font-bold text-2xl">⚡</span>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-mondelez-orange transition-colors">Asignar Lockers</h3>
+                </div>
+              </div>
+              <p className="text-gray-600 group-hover:text-gray-700">Asignar y desasignar lockers a empleados activos</p>
+              <div className="mt-4 flex items-center text-mondelez-orange font-medium">
+                <span>Ir a asignación</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
 
             <button
               onClick={() => router.push('/dashboard/reports')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-mondelez-green"
             >
-              <BarChart3 className="w-12 h-12 text-mondelez-green mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Reportes</h3>
-              <p className="text-gray-600">Ver reportes y auditoría</p>
-            </button>
-          </div>
-
-          {/* Acciones adicionales */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <button
-              onClick={() => router.push('/dashboard/assign')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
-            >
-              <div className="w-12 h-12 bg-mondelez-orange rounded-lg flex items-center justify-center mb-4">
-                <span className="text-white font-bold text-lg">A</span>
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-mondelez-green rounded-xl flex items-center justify-center group-hover:bg-green-600 transition-colors">
+                  <BarChart3 className="w-8 h-8 text-white" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-mondelez-green transition-colors">Reportes</h3>
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Asignar Lockers</h3>
-              <p className="text-gray-600">Asignar y desasignar lockers</p>
+              <p className="text-gray-600 group-hover:text-gray-700">Análisis visual, estadísticas y exportación de datos</p>
+              <div className="mt-4 flex items-center text-mondelez-green font-medium">
+                <span>Ver reportes</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
 
             <button
               onClick={() => router.push('/dashboard/audit')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-gray-600"
             >
-              <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-white font-bold text-lg">H</span>
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-gray-600 rounded-xl flex items-center justify-center group-hover:bg-gray-700 transition-colors">
+                  <span className="text-white font-bold text-2xl">📋</span>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-gray-600 transition-colors">Auditoría</h3>
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Auditoría</h3>
-              <p className="text-gray-600">Historial completo de cambios</p>
+              <p className="text-gray-600 group-hover:text-gray-700">Historial completo de cambios y actividades del sistema</p>
+              <div className="mt-4 flex items-center text-gray-600 font-medium">
+                <span>Ver historial</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
 
             <button
               onClick={() => router.push('/dashboard/scanner')}
-              className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
+              className="group card hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-left border-2 border-transparent hover:border-indigo-600"
             >
-              <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-white font-bold text-lg">QR</span>
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-700 transition-colors">
+                  <QrCode className="w-8 h-8 text-white" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">Escáner QR</h3>
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Escáner QR</h3>
-              <p className="text-gray-600">Escanear códigos de lockers</p>
+              <p className="text-gray-600 group-hover:text-gray-700">Escanear códigos QR de lockers con la cámara</p>
+              <div className="mt-4 flex items-center text-indigo-600 font-medium">
+                <span>Abrir escáner</span>
+                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
           </div>
         </div>
