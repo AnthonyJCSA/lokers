@@ -4,16 +4,22 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import QrScanner from 'qr-scanner'
-import { Camera, ArrowLeft } from 'lucide-react'
+import { Camera, ArrowLeft, Upload } from 'lucide-react'
 
 export default function Scanner() {
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState('')
+  const [isIOS, setIsIOS] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const qrScannerRef = useRef<QrScanner | null>(null)
   const router = useRouter()
 
   useEffect(() => {
+    // Detectar iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    setIsIOS(iOS)
+    
     return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.destroy()
@@ -21,7 +27,63 @@ export default function Scanner() {
     }
   }, [])
 
+  const processQRData = (qrData: string) => {
+    try {
+      console.log('QR Data:', qrData)
+      
+      let lockerId = null
+      
+      // Formato 1: URL completa (https://domain.com/locker/id)
+      if (qrData.includes('/locker/')) {
+        const urlParts = qrData.split('/locker/')
+        if (urlParts.length > 1) {
+          lockerId = urlParts[1].split('?')[0] // Remover query params si existen
+        }
+      }
+      // Formato 2: Solo ID del locker
+      else if (qrData.match(/^[a-f0-9-]{36}$/i)) {
+        lockerId = qrData
+      }
+      // Formato 3: JSON con datos del locker
+      else if (qrData.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(qrData)
+          if (parsed.locker_id) {
+            lockerId = parsed.locker_id
+          } else if (parsed.url && parsed.url.includes('/locker/')) {
+            const urlParts = parsed.url.split('/locker/')
+            lockerId = urlParts[1]
+          }
+        } catch (e) {
+          console.error('Error parsing JSON QR:', e)
+        }
+      }
+      // Formato 4: Buscar por QR code en base de datos
+      else {
+        searchLockerByQRCode(qrData)
+        return
+      }
+      
+      if (lockerId) {
+        router.push(`/locker/${lockerId}`)
+      } else {
+        alert('Código QR no válido o no reconocido')
+        setScanning(false)
+      }
+    } catch (error) {
+      console.error('Error processing QR:', error)
+      alert('Error al procesar el código QR')
+      setScanning(false)
+    }
+  }
+
   const startScanning = async () => {
+    if (isIOS) {
+      // En iOS, usar input de archivo
+      fileInputRef.current?.click()
+      return
+    }
+
     if (!videoRef.current) return
 
     try {
@@ -31,59 +93,8 @@ export default function Scanner() {
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
-          try {
-            const qrData = result.data
-            console.log('QR Data:', qrData)
-            
-            // Detener escáner
-            qrScannerRef.current?.destroy()
-            
-            // Intentar diferentes formatos de QR
-            let lockerId = null
-            
-            // Formato 1: URL completa (https://domain.com/locker/id)
-            if (qrData.includes('/locker/')) {
-              const urlParts = qrData.split('/locker/')
-              if (urlParts.length > 1) {
-                lockerId = urlParts[1].split('?')[0] // Remover query params si existen
-              }
-            }
-            // Formato 2: Solo ID del locker
-            else if (qrData.match(/^[a-f0-9-]{36}$/i)) {
-              lockerId = qrData
-            }
-            // Formato 3: JSON con datos del locker
-            else if (qrData.startsWith('{')) {
-              try {
-                const parsed = JSON.parse(qrData)
-                if (parsed.locker_id) {
-                  lockerId = parsed.locker_id
-                } else if (parsed.url && parsed.url.includes('/locker/')) {
-                  const urlParts = parsed.url.split('/locker/')
-                  lockerId = urlParts[1]
-                }
-              } catch (e) {
-                console.error('Error parsing JSON QR:', e)
-              }
-            }
-            // Formato 4: Buscar por QR code en base de datos
-            else {
-              // Buscar locker por qr_code
-              searchLockerByQRCode(qrData)
-              return
-            }
-            
-            if (lockerId) {
-              router.push(`/locker/${lockerId}`)
-            } else {
-              alert('Código QR no válido o no reconocido')
-              setScanning(false)
-            }
-          } catch (error) {
-            console.error('Error processing QR:', error)
-            alert('Error al procesar el código QR')
-            setScanning(false)
-          }
+          qrScannerRef.current?.destroy()
+          processQRData(result.data)
         },
         {
           highlightScanRegion: true,
@@ -95,6 +106,19 @@ export default function Scanner() {
     } catch (err: any) {
       setError('Error al acceder a la cámara: ' + err.message)
       setScanning(false)
+    }
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      setError('')
+      const result = await QrScanner.scanImage(file)
+      processQRData(result)
+    } catch (error) {
+      setError('No se pudo leer el código QR de la imagen')
     }
   }
 
@@ -184,13 +208,30 @@ export default function Scanner() {
 
           <div className="space-y-4">
             {!scanning ? (
-              <button
-                onClick={startScanning}
-                className="btn-primary w-full max-w-xs mx-auto flex items-center justify-center space-x-2"
-              >
-                <Camera className="w-5 h-5" />
-                <span>Iniciar Escaneo</span>
-              </button>
+              <div className="space-y-4">
+                <button
+                  onClick={startScanning}
+                  className="btn-primary w-full max-w-xs mx-auto flex items-center justify-center space-x-2"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>{isIOS ? 'Seleccionar Imagen QR' : 'Iniciar Escaneo'}</span>
+                </button>
+                
+                {isIOS && (
+                  <p className="text-sm text-blue-600 text-center">
+                    En iOS: Toma una foto del QR o selecciona desde galería
+                  </p>
+                )}
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
             ) : (
               <button
                 onClick={stopScanning}
@@ -204,10 +245,21 @@ export default function Scanner() {
           <div className="mt-8 p-4 bg-blue-50 rounded-lg">
             <h3 className="font-medium text-blue-900 mb-2">Instrucciones:</h3>
             <ul className="text-sm text-blue-800 space-y-1 text-left">
-              <li>• Asegúrate de tener buena iluminación</li>
-              <li>• Mantén el código QR dentro del marco</li>
-              <li>• Espera a que se detecte automáticamente</li>
-              <li>• El escaneo te llevará a la información del locker</li>
+              {isIOS ? (
+                <>
+                  <li>• Toca "Seleccionar Imagen QR" para abrir la cámara</li>
+                  <li>• Toma una foto del código QR o selecciona desde galería</li>
+                  <li>• Asegúrate de que el QR esté bien enfocado</li>
+                  <li>• La app procesará automáticamente el código</li>
+                </>
+              ) : (
+                <>
+                  <li>• Asegúrate de tener buena iluminación</li>
+                  <li>• Mantén el código QR dentro del marco</li>
+                  <li>• Espera a que se detecte automáticamente</li>
+                  <li>• El escaneo te llevará a la información del locker</li>
+                </>
+              )}
             </ul>
           </div>
         </div>
