@@ -19,20 +19,19 @@ export const generateQRCode = async (data: string): Promise<string> => {
 }
 
 export const generateLockerQRData = (lockerId: string, lockerNumber: string): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  return JSON.stringify({
-    url: `${baseUrl}/locker/${lockerId}`,
-    locker_id: lockerId,
-    locker_number: lockerNumber,
-    company: 'Mondelez Peru',
-    generated_at: new Date().toISOString()
-  })
+  // Detectar URL actual del navegador o usar variable de entorno
+  const baseUrl = typeof window !== 'undefined' 
+    ? `${window.location.protocol}//${window.location.host}`
+    : process.env.NEXT_PUBLIC_APP_URL || 'https://lokers.vercel.app'
+  
+  // Retornar solo la URL para el QR (más simple para escanear)
+  return `${baseUrl}/locker/${lockerId}`
 }
 
 export const generateAndUpdateQRCode = async (lockerId: string, lockerNumber: string): Promise<string> => {
   try {
     const qrData = generateLockerQRData(lockerId, lockerNumber)
-    const qrHash = btoa(qrData).substring(0, 32) // Hash único basado en datos
+    const qrHash = `QR_${lockerId}_${Date.now()}` // Hash único basado en ID y timestamp
     
     // Actualizar QR code en la base de datos
     await supabase
@@ -46,7 +45,11 @@ export const generateAndUpdateQRCode = async (lockerId: string, lockerNumber: st
       .insert({
         locker_id: lockerId,
         action: 'qr_regenerated',
-        details: { new_qr_hash: qrHash, locker_number: lockerNumber }
+        details: { 
+          new_qr_hash: qrHash, 
+          locker_number: lockerNumber,
+          qr_url: qrData
+        }
       })
     
     return qrData
