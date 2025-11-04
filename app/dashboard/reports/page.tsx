@@ -100,32 +100,76 @@ export default function Reports() {
 
   const getRecommendations = () => {
     const stats = getGeneralStats()
+    const shiftStats = getShiftStats()
     const recommendations = []
     
-    if (stats.occupancyRate > 85) {
-      recommendations.push({
-        type: 'warning',
-        title: 'Alta Ocupación',
-        message: `${stats.occupancyRate}% de ocupación. Considerar agregar más lockers.`,
-        action: 'Evaluar expansión de lockers'
-      })
-    }
-    
-    if (stats.maintenanceRate > 15) {
-      recommendations.push({
-        type: 'alert',
-        title: 'Mantenimiento Alto',
-        message: `${stats.maintenanceRate}% en mantenimiento. Revisar estado de lockers.`,
-        action: 'Programar mantenimiento preventivo'
-      })
-    }
-    
-    if (stats.availabilityRate > 70) {
+    // Recomendación por ocupación general
+    if (stats.occupancyRate < 40) {
       recommendations.push({
         type: 'success',
-        title: 'Buena Disponibilidad',
-        message: `${stats.availabilityRate}% disponible. Capacidad adecuada.`,
-        action: 'Mantener estado actual'
+        title: 'Capacidad Disponible',
+        message: `Solo ${stats.occupancyRate}% ocupado. Hay ${stats.availableLockers} lockers disponibles.`,
+        action: 'Promover uso de lockers entre empleados',
+        actionType: 'promote'
+      })
+    } else if (stats.occupancyRate > 80) {
+      recommendations.push({
+        type: 'warning',
+        title: 'Alta Demanda',
+        message: `${stats.occupancyRate}% ocupado. Solo ${stats.availableLockers} lockers disponibles.`,
+        action: 'Considerar adquirir más lockers',
+        actionType: 'expand'
+      })
+    }
+    
+    // Recomendaciones por turno
+    const shift1Util = shiftStats.shift1 > 0 ? Math.round((shiftStats.shift1 / employees.filter(e => e.shift === 1 && e.status === 'active').length) * 100) : 0
+    const shift2Util = shiftStats.shift2 > 0 ? Math.round((shiftStats.shift2 / employees.filter(e => e.shift === 2 && e.status === 'active').length) * 100) : 0
+    const shift3Util = shiftStats.shift3 > 0 ? Math.round((shiftStats.shift3 / employees.filter(e => e.shift === 3 && e.status === 'active').length) * 100) : 0
+    
+    if (shift1Util > 90 || shift2Util > 90) {
+      const highShift = shift1Util > shift2Util ? 'Turno 1 (Mañana)' : 'Turno 2 (Tarde)'
+      const highUtil = Math.max(shift1Util, shift2Util)
+      recommendations.push({
+        type: 'alert',
+        title: 'Saturación en Turno',
+        message: `${highShift} tiene ${highUtil}% de utilización. Riesgo de falta de lockers.`,
+        action: 'Redistribuir lockers o ampliar capacidad',
+        actionType: 'redistribute'
+      })
+    }
+    
+    if (shift3Util < 30) {
+      recommendations.push({
+        type: 'info',
+        title: 'Oportunidad Turno Nocturno',
+        message: `Turno 3 solo usa ${shift3Util}% de capacidad. ${10 - shiftStats.shift3} empleados sin locker.`,
+        action: 'Promover asignación en turno nocturno',
+        actionType: 'assign_night'
+      })
+    }
+    
+    // Recomendación por mantenimiento
+    if (stats.maintenanceRate > 10) {
+      recommendations.push({
+        type: 'warning',
+        title: 'Mantenimiento Elevado',
+        message: `${stats.maintenanceLockers} lockers en mantenimiento (${stats.maintenanceRate}%).`,
+        action: 'Revisar y reparar lockers en mantenimiento',
+        actionType: 'maintenance'
+      })
+    }
+    
+    // Recomendación por áreas
+    const areaStats = getAreaStats()
+    const topArea = areaStats.reduce((prev, current) => (prev.count > current.count) ? prev : current, areaStats[0])
+    if (topArea && topArea.count > stats.activeEmployees * 0.3) {
+      recommendations.push({
+        type: 'info',
+        title: 'Concentración por Área',
+        message: `${topArea.area} tiene ${topArea.count} empleados (${Math.round((topArea.count/stats.activeEmployees)*100)}% del total).`,
+        action: 'Considerar lockers dedicados por área',
+        actionType: 'area_dedicated'
       })
     }
     
@@ -282,24 +326,94 @@ export default function Reports() {
               Recomendaciones
             </h3>
             <div className="space-y-3">
-              {getRecommendations().map((rec, index) => (
-                <div key={index} className={`p-3 rounded-lg border-l-4 ${
-                  rec.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
-                  rec.type === 'alert' ? 'bg-red-50 border-red-400' :
-                  'bg-green-50 border-green-400'
-                }`}>
-                  <div className="flex items-start">
-                    {rec.type === 'warning' ? <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" /> :
-                     rec.type === 'alert' ? <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-2" /> :
-                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-2" />}
-                    <div>
-                      <h4 className="font-medium text-gray-900">{rec.title}</h4>
-                      <p className="text-sm text-gray-600 mb-1">{rec.message}</p>
-                      <p className="text-xs font-medium text-gray-800">{rec.action}</p>
+              {getRecommendations().map((rec, index) => {
+                const getActionButton = (actionType: string) => {
+                  switch (actionType) {
+                    case 'promote':
+                      return (
+                        <button 
+                          onClick={() => router.push('/dashboard/employees')}
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Ver Empleados
+                        </button>
+                      )
+                    case 'expand':
+                      return (
+                        <button 
+                          onClick={() => router.push('/dashboard/lockers')}
+                          className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Gestionar Lockers
+                        </button>
+                      )
+                    case 'redistribute':
+                    case 'assign_night':
+                      return (
+                        <button 
+                          onClick={() => router.push('/dashboard/assign')}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Asignar Lockers
+                        </button>
+                      )
+                    case 'maintenance':
+                      return (
+                        <button 
+                          onClick={() => router.push('/dashboard/lockers')}
+                          className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Ver Mantenimiento
+                        </button>
+                      )
+                    case 'area_dedicated':
+                      return (
+                        <button 
+                          onClick={() => router.push('/dashboard/reports')}
+                          className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Ver Detalles
+                        </button>
+                      )
+                    default:
+                      return null
+                  }
+                }
+                
+                return (
+                  <div key={index} className={`p-4 rounded-lg border-l-4 hover:shadow-md transition-shadow ${
+                    rec.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
+                    rec.type === 'alert' ? 'bg-red-50 border-red-400' :
+                    rec.type === 'info' ? 'bg-blue-50 border-blue-400' :
+                    'bg-green-50 border-green-400'
+                  }`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start flex-1">
+                        {rec.type === 'warning' ? <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3" /> :
+                         rec.type === 'alert' ? <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3" /> :
+                         rec.type === 'info' ? <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5 mr-3" /> :
+                         <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3" />}
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1">{rec.title}</h4>
+                          <p className="text-sm text-gray-700 mb-2">{rec.message}</p>
+                          <p className="text-xs text-gray-600 italic">{rec.action}</p>
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        {getActionButton(rec.actionType)}
+                      </div>
                     </div>
                   </div>
+                )
+              })}
+              
+              {getRecommendations().length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
+                  <p className="font-medium">Sistema Funcionando Correctamente</p>
+                  <p className="text-sm">No hay recomendaciones críticas en este momento</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
