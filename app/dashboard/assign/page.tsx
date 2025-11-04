@@ -41,14 +41,41 @@ export default function AssignLocker() {
     if (!selectedLocker || !selectedEmployee) return
 
     try {
+      // Verificar que el locker esté disponible
+      const { data: lockerCheck } = await supabase
+        .from('lockers')
+        .select('status, number')
+        .eq('id', selectedLocker)
+        .single()
+
+      if (lockerCheck?.status !== 'available') {
+        alert('El locker seleccionado no está disponible')
+        return
+      }
+
+      // Verificar que el empleado no tenga otro locker asignado
+      const { data: existingAssignment } = await supabase
+        .from('assignments')
+        .select('id')
+        .eq('employee_id', selectedEmployee)
+        .eq('status', 'active')
+        .single()
+
+      if (existingAssignment) {
+        alert('El empleado ya tiene un locker asignado')
+        return
+      }
+
       // Crear asignación
-      const { error: assignError } = await supabase
+      const { data: newAssignment, error: assignError } = await supabase
         .from('assignments')
         .insert({
           locker_id: selectedLocker,
           employee_id: selectedEmployee,
           status: 'active'
         })
+        .select()
+        .single()
 
       if (assignError) throw assignError
 
@@ -58,6 +85,13 @@ export default function AssignLocker() {
         .update({ status: 'occupied' })
         .eq('id', selectedLocker)
 
+      // Obtener datos del empleado para el log
+      const { data: employeeData } = await supabase
+        .from('employees')
+        .select('name')
+        .eq('id', selectedEmployee)
+        .single()
+
       // Crear log de auditoría
       await supabase
         .from('audit_logs')
@@ -65,7 +99,12 @@ export default function AssignLocker() {
           locker_id: selectedLocker,
           employee_id: selectedEmployee,
           action: 'assign',
-          details: { type: 'manual_assignment' }
+          details: { 
+            type: 'manual_assignment',
+            locker_number: lockerCheck.number,
+            employee_name: employeeData?.name,
+            assignment_id: newAssignment?.id
+          }
         })
 
       alert('Locker asignado exitosamente')
@@ -81,6 +120,13 @@ export default function AssignLocker() {
     if (!confirm('¿Estás seguro de desasignar este locker?')) return
 
     try {
+      // Obtener datos de la asignación antes de liberarla
+      const { data: assignmentData } = await supabase
+        .from('assignments')
+        .select('employee_id')
+        .eq('id', assignmentId)
+        .single()
+
       // Actualizar asignación
       await supabase
         .from('assignments')
@@ -90,7 +136,7 @@ export default function AssignLocker() {
         })
         .eq('id', assignmentId)
 
-      // Actualizar estado del locker
+      // Actualizar estado del locker a disponible
       await supabase
         .from('lockers')
         .update({ status: 'available' })
@@ -101,10 +147,12 @@ export default function AssignLocker() {
         .from('audit_logs')
         .insert({
           locker_id: lockerId,
+          employee_id: assignmentData?.employee_id,
           action: 'release',
-          details: { type: 'manual_release' }
+          details: { type: 'manual_release', assignment_id: assignmentId }
         })
 
+      alert('Locker desasignado exitosamente')
       loadData()
     } catch (error: any) {
       alert('Error: ' + error.message)

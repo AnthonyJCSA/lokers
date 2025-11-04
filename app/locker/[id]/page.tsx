@@ -96,7 +96,7 @@ export default function LockerDetail() {
         })
         .eq('id', assignment.id)
 
-      // Actualizar estado del locker
+      // Actualizar estado del locker a disponible
       await supabase
         .from('lockers')
         .update({ status: 'available' })
@@ -109,9 +109,14 @@ export default function LockerDetail() {
           locker_id: params.id,
           employee_id: assignment.employee_id,
           action: 'release',
-          details: { reason: 'Manual release' }
+          details: { 
+            reason: 'Manual release',
+            assignment_id: assignment.id,
+            employee_name: employee?.name
+          }
         })
 
+      alert('Locker liberado exitosamente')
       // Recargar datos
       loadLockerData()
     } catch (error: any) {
