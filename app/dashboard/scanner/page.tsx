@@ -90,6 +90,18 @@ export default function Scanner() {
       setError('')
       setScanning(true)
 
+      // Verificar permisos de cámara primero
+      if (!await QrScanner.hasCamera()) {
+        throw new Error('No se detectó ninguna cámara en el dispositivo')
+      }
+
+      // Solicitar permisos explícitamente
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true })
+      } catch (permissionError: any) {
+        throw new Error('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.')
+      }
+
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
@@ -99,12 +111,26 @@ export default function Scanner() {
         {
           highlightScanRegion: true,
           highlightCodeOutline: true,
+          preferredCamera: 'environment' // Usar cámara trasera si está disponible
         }
       )
 
       await qrScannerRef.current.start()
     } catch (err: any) {
-      setError('Error al acceder a la cámara: ' + err.message)
+      console.error('Camera error:', err)
+      let errorMessage = 'Error desconocido al acceder a la cámara'
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Permisos de cámara denegados. Permite el acceso en la configuración del navegador.'
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No se encontró ninguna cámara en el dispositivo.'
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage = 'El navegador no soporta acceso a la cámara.'
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
       setScanning(false)
     }
   }
@@ -185,7 +211,23 @@ export default function Scanner() {
 
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600">{error}</p>
+              <p className="text-red-600 font-medium mb-2">{error}</p>
+              {error.includes('Permisos') && (
+                <div className="text-sm text-red-700">
+                  <p className="mb-1">Para habilitar la cámara:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Chrome: Click en el ícono de cámara en la barra de direcciones</li>
+                    <li>Firefox: Click en "Permitir" cuando aparezca la notificación</li>
+                    <li>Safari: Ve a Configuración → Sitios web → Cámara</li>
+                  </ul>
+                </div>
+              )}
+              <button
+                onClick={() => setError('')}
+                className="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
+              >
+                Cerrar
+              </button>
             </div>
           )}
 
@@ -216,6 +258,17 @@ export default function Scanner() {
                   <Camera className="w-5 h-5" />
                   <span>{isIOS ? 'Seleccionar Imagen QR' : 'Iniciar Escaneo'}</span>
                 </button>
+                
+                {/* Opción alternativa para PC también */}
+                {!isIOS && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-secondary w-full max-w-xs mx-auto flex items-center justify-center space-x-2"
+                  >
+                    <Upload className="w-5 h-5" />
+                    <span>Subir Imagen QR</span>
+                  </button>
+                )}
                 
                 {isIOS && (
                   <p className="text-sm text-blue-600 text-center">
