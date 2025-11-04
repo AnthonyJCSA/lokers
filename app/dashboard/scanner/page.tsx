@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import QrScanner from 'qr-scanner'
 import { Camera, ArrowLeft } from 'lucide-react'
 
@@ -30,10 +31,59 @@ export default function Scanner() {
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
-          // Extraer ID del locker del QR
-          const lockerId = result.data
-          qrScannerRef.current?.destroy()
-          router.push(`/locker/${lockerId}`)
+          try {
+            const qrData = result.data
+            console.log('QR Data:', qrData)
+            
+            // Detener escáner
+            qrScannerRef.current?.destroy()
+            
+            // Intentar diferentes formatos de QR
+            let lockerId = null
+            
+            // Formato 1: URL completa (https://domain.com/locker/id)
+            if (qrData.includes('/locker/')) {
+              const urlParts = qrData.split('/locker/')
+              if (urlParts.length > 1) {
+                lockerId = urlParts[1].split('?')[0] // Remover query params si existen
+              }
+            }
+            // Formato 2: Solo ID del locker
+            else if (qrData.match(/^[a-f0-9-]{36}$/i)) {
+              lockerId = qrData
+            }
+            // Formato 3: JSON con datos del locker
+            else if (qrData.startsWith('{')) {
+              try {
+                const parsed = JSON.parse(qrData)
+                if (parsed.locker_id) {
+                  lockerId = parsed.locker_id
+                } else if (parsed.url && parsed.url.includes('/locker/')) {
+                  const urlParts = parsed.url.split('/locker/')
+                  lockerId = urlParts[1]
+                }
+              } catch (e) {
+                console.error('Error parsing JSON QR:', e)
+              }
+            }
+            // Formato 4: Buscar por QR code en base de datos
+            else {
+              // Buscar locker por qr_code
+              searchLockerByQRCode(qrData)
+              return
+            }
+            
+            if (lockerId) {
+              router.push(`/locker/${lockerId}`)
+            } else {
+              alert('Código QR no válido o no reconocido')
+              setScanning(false)
+            }
+          } catch (error) {
+            console.error('Error processing QR:', error)
+            alert('Error al procesar el código QR')
+            setScanning(false)
+          }
         },
         {
           highlightScanRegion: true,
@@ -54,6 +104,28 @@ export default function Scanner() {
       qrScannerRef.current = null
     }
     setScanning(false)
+  }
+
+  const searchLockerByQRCode = async (qrCode: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('lockers')
+        .select('id')
+        .eq('qr_code', qrCode)
+        .single()
+
+      if (error || !data) {
+        alert('Locker no encontrado con este código QR')
+        setScanning(false)
+        return
+      }
+
+      router.push(`/locker/${data.id}`)
+    } catch (error) {
+      console.error('Error searching locker:', error)
+      alert('Error al buscar el locker')
+      setScanning(false)
+    }
   }
 
   return (
