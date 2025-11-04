@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Locker } from '@/types'
 import { ArrowLeft, Plus, Package, Search, Filter } from 'lucide-react'
-import { generateQRCode, generateLockerQRData, downloadQRCode } from '@/utils/qrGenerator'
+import { generateQRCode, generateLockerQRData, generateAndUpdateQRCode, downloadQRCode } from '@/utils/qrGenerator'
 
 export default function LockersManagement() {
   const [lockers, setLockers] = useState<Locker[]>([])
@@ -106,6 +106,9 @@ export default function LockersManagement() {
 
       if (error) throw error
 
+      // Regenerar QR con nuevos datos
+      await generateAndUpdateQRCode(editingLocker.id, newLockerNumber)
+
       // Crear log de auditoría
       await supabase
         .from('audit_logs')
@@ -148,11 +151,13 @@ export default function LockersManagement() {
 
   const showQRCode = async (locker: Locker) => {
     try {
-      const qrData = generateLockerQRData(locker.id, locker.number)
+      const qrData = await generateAndUpdateQRCode(locker.id, locker.number)
       const qrURL = await generateQRCode(qrData)
       setQrLocker(locker)
       setQrCodeURL(qrURL)
       setShowQRModal(true)
+      // Recargar lockers para mostrar QR actualizado
+      loadLockers()
     } catch (error) {
       alert('Error al generar código QR')
     }

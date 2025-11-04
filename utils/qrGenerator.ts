@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { supabase } from '@/lib/supabase'
 
 export const generateQRCode = async (data: string): Promise<string> => {
   try {
@@ -18,9 +19,41 @@ export const generateQRCode = async (data: string): Promise<string> => {
 }
 
 export const generateLockerQRData = (lockerId: string, lockerNumber: string): string => {
-  // Generar URL que apunte a la página del locker
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  return `${baseUrl}/locker/${lockerId}`
+  return JSON.stringify({
+    url: `${baseUrl}/locker/${lockerId}`,
+    locker_id: lockerId,
+    locker_number: lockerNumber,
+    company: 'Mondelez Peru',
+    generated_at: new Date().toISOString()
+  })
+}
+
+export const generateAndUpdateQRCode = async (lockerId: string, lockerNumber: string): Promise<string> => {
+  try {
+    const qrData = generateLockerQRData(lockerId, lockerNumber)
+    const qrHash = btoa(qrData).substring(0, 32) // Hash único basado en datos
+    
+    // Actualizar QR code en la base de datos
+    await supabase
+      .from('lockers')
+      .update({ qr_code: qrHash })
+      .eq('id', lockerId)
+    
+    // Crear log de auditoría
+    await supabase
+      .from('audit_logs')
+      .insert({
+        locker_id: lockerId,
+        action: 'qr_regenerated',
+        details: { new_qr_hash: qrHash, locker_number: lockerNumber }
+      })
+    
+    return qrData
+  } catch (error) {
+    console.error('Error updating QR code:', error)
+    throw error
+  }
 }
 
 export const downloadQRCode = (dataURL: string, filename: string) => {

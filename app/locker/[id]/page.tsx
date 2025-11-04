@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Locker, Employee, Assignment } from '@/types'
-import { ArrowLeft, Package, User, Calendar, Clock, AlertCircle } from 'lucide-react'
+import { Locker, Employee, Assignment, AuditLog } from '@/types'
+import { ArrowLeft, Package, User, Calendar, Clock, AlertCircle, History } from 'lucide-react'
 
 export default function LockerDetail() {
   const params = useParams()
@@ -12,6 +12,7 @@ export default function LockerDetail() {
   const [locker, setLocker] = useState<Locker | null>(null)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [employee, setEmployee] = useState<Employee | null>(null)
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -62,6 +63,18 @@ export default function LockerDetail() {
         if (employeeData) {
           setEmployee(employeeData)
         }
+      }
+
+      // Cargar historial de auditoría
+      const { data: auditData } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('locker_id', params.id)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (auditData) {
+        setAuditLogs(auditData)
       }
     } catch (error: any) {
       setError(error.message)
@@ -294,15 +307,71 @@ export default function LockerDetail() {
         {/* Historial de Auditoría */}
         <div className="mt-8 card">
           <div className="flex items-center mb-6">
-            <Clock className="w-8 h-8 text-mondelez-green" />
+            <History className="w-8 h-8 text-mondelez-green" />
             <h2 className="ml-3 text-xl font-bold text-gray-900">
               Historial de Auditoría
             </h2>
           </div>
           
-          <div className="text-center py-8 text-gray-500">
-            <p>Funcionalidad de auditoría en desarrollo</p>
-          </div>
+          {auditLogs.length > 0 ? (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {auditLogs.map((log) => {
+                const getActionColor = (action: string) => {
+                  switch (action) {
+                    case 'assign': return 'bg-green-100 text-green-800'
+                    case 'release': return 'bg-red-100 text-red-800'
+                    case 'qr_regenerated': return 'bg-blue-100 text-blue-800'
+                    case 'create': return 'bg-purple-100 text-purple-800'
+                    case 'update': return 'bg-yellow-100 text-yellow-800'
+                    default: return 'bg-gray-100 text-gray-800'
+                  }
+                }
+                
+                const getActionText = (action: string) => {
+                  switch (action) {
+                    case 'assign': return 'Asignación'
+                    case 'release': return 'Liberación'
+                    case 'qr_regenerated': return 'QR Regenerado'
+                    case 'create': return 'Creación'
+                    case 'update': return 'Actualización'
+                    default: return action
+                  }
+                }
+                
+                return (
+                  <div key={log.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionColor(log.action)}`}>
+                            {getActionText(log.action)}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {new Date(log.created_at).toLocaleString('es-PE')}
+                          </span>
+                        </div>
+                        
+                        {log.details && (
+                          <div className="text-sm text-gray-600">
+                            {Object.entries(log.details).map(([key, value]) => (
+                              <div key={key} className="mb-1">
+                                <span className="font-medium">{key}:</span> {String(value)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <History className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+              <p>No hay historial de auditoría disponible</p>
+            </div>
+          )}
         </div>
       </main>
     </div>
